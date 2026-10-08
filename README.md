@@ -1,7 +1,7 @@
-# eBPF Hello World with GoLang
+# 🤖 eBPF Hello World with GoLang
 [ebpf.io](https://ebpf.io)
 
-## Requirements:
+## 📦 Requirements:
 1. **Install** Linux VM _(via multipass)_ - _required for linux headers_
 2. **Install** the required packages.
     ```
@@ -19,45 +19,45 @@
     - python3-pip
     - python3-venv
     ```
-    2a. Provision and boostrap the Workspace VM.
+    **2a**. Provision and boostrap the Workspace VM.
     ```
-    ./_setup.sh
+    $ ./_setup.sh
     ```
 
-## Compile eBPF & Go Program
+## 📦 Compile eBPF & Go Program
 1. **SSH** to the virtual environment
     ```
-    multipass shell ebpf-working-environment1
+    $ multipass shell ebpf-working-environment1
     ```
 2. **Compile** eBPF Program _(Kernel Space)_
     ```
-    cd /mnt/workspace/bpf
-    make clean && make
+    $ cd /mnt/workspace/bpf
+    $ make clean && make
     ```
 3.  **Compile** Go Program
     ```
-    cd /mnt/workspace/cmd
-    make clean && make init && make build
+    $ cd /mnt/workspace/cmd
+    $ make clean && make init && make build
     ```
 4. **Run** the Program
     ```
-    sudo ./helloworld
+    $ sudo ./helloworld
     ```
 
-## Trigger kernel syscall `do_sys_openat2`
-**Run:** `cat /etc/hosts` (this triggers `do_sys_openat2`)
+## ⏱️ Trigger kernel syscall `do_sys_openat2`
+Run: `cat /etc/hosts` (this triggers `do_sys_openat2`)
 
-## Response
+### 📝 Response
 ```
 2026/08/20 00:25:41 eBPF program loaded
 2026/08/20 00:25:41 waiting for events...
 2026/08/20 00:25:41 EVENT: Hello, eBPF! <--- response from syscall event
 ```
 
-### What happened? 
+### 💡 What happened?
 Every kernel syscall `do_sys_openat2()` a hook triggers a `hello()` function which sends event message to userspace which then reads by Go Program.
 
-## Kernel to Userspace Structure
+## 🗿 Kernel to Userspace Structure
 ```
  Linux kernel
       │
@@ -90,7 +90,7 @@ Every kernel syscall `do_sys_openat2()` a hook triggers a `hello()` function whi
     └── produce                  consume
 ```
 
-## Trigger Flow
+## 🗿 Trigger Flow
 ```
  cat
   │
@@ -122,18 +122,18 @@ Every kernel syscall `do_sys_openat2()` a hook triggers a `hello()` function whi
  EVENT: Hello, eBPF! <------ log.Printf()
 ```
 
-## The three most important pieces
-### Kernel eBPF: `C Code`
+## 💡 The three most important pieces
+### ⚡️ Kernel eBPF: `C Code`
 ```
 bpf_ringbuf_submit(e, 0);
 ```
 
-### Go ring-buffer reader:
+### ⚡️ Go ring-buffer reader:
 ```
 record, err := rd.Read()
 ```
 
-### Go event decoder:
+### ⚡️ Go event decoder:
 ```
 record, err := rd.Read()
 binary.Read(..., &event)
@@ -152,12 +152,12 @@ Ring buffer
 						record
 ```
 
-# Real-world Applications
+# 🤖 Real-world Applications
 
-## Network Tracer
+## 📦 Network Tracer
 Bind to Kernel `tracepoint/sock/inet_sock_set_state` and capture each connection states and calculate latency.
 
-### Network Call (via curl)
+### ⚡️ Network Call
 ```
 $ curl https://httpbin.org/delay/5
 {
@@ -176,7 +176,7 @@ $ curl https://httpbin.org/delay/5
 }
 ```
 
-### eBPF Trace Response
+### 📝 eBPF Trace Response
 ```
 2026/08/30 14:51:40 eBPF NET TRACER Running...
 40885860438216 PID=67331 COMM=curl CWD=/apps/workspace CMD=curl https://httpbin.org/delay/5 CONN=172.31.36.100:0->34.195.135.204:443[CLOSE]->[SYN_SENT] LATENCY=0.000005s
@@ -187,7 +187,61 @@ $ curl https://httpbin.org/delay/5
 ```
 Note: It shows Latency between syscall eg. `[FIN_WAIT1]` it waits around 5s.
 
-## System Call Tracer
+## ⚡️ Monitor attache eBPF loaded programs.
+### 👾 List loaded eBPF programs
+eBPF programs loaded into the kernel.
+```
+$ bpftool prog show | grep "trace_tcp_state" -A3
+56: tracepoint  name trace_tcp_state  tag 924dc88896b201b9  gpl
+        loaded_at 2026-10-08T11:27:57+0000  uid 0
+        xlated 1248B  jited 759B  memlock 4096B  map_ids 3,4
+        btf_id 55
+```
+### 👾 List eBPF maps
+Maps holds the data generated from kernel-space.
+```
+$ bpftool map show
+
+# maps declared in eBPF Programs
+3: lru_hash  name connections  flags 0x0
+        key 8B  value 32B  max_entries 65536  memlock 6816640B
+        btf_id 54
+4: ringbuf  name events  flags 0x0
+        key 0B  value 0B  max_entries 16777216  memlock 16855360B
+        btf_id 54
+```
+### 👾 Dump maps data
+curl event is triggered for the map to contain data.
+```
+$ curl https://httpbin.org/delay/5; bpftool map dump id 3
+{
+  "args": {}, 
+  "data": "", 
+  "files": {}, 
+  "form": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Host": "httpbin.org", 
+    "User-Agent": "curl/8.5.0", 
+    "X-Amzn-Trace-Id": "Root=1-6ac780bf-094ba3cc6721a90f24e185d4"
+  }, 
+  "origin": "13.63.92.146", 
+  "url": "https://httpbin.org/delay/5"
+}
+[{
+    "key": 18446617228410057216,
+    "value": {
+        "saddr": 1680089004,
+        "daddr": 2512035638,
+        "sport": 58712,
+        "dport": 47873,
+        "pid": 4999,
+        "tgid": 4999,
+        "start_ns": 1353878813428
+}]
+```
+
+## 📦 System Call Tracer
 Detect all system call entry by tapping from `raw_tracepoint/sys_enter`.
 _Example C Program that invokes couple of kernel syscalls_
 [systrace-test.c](./ebpf-go-hello-world/bpf/systrace-test/systrace-test.c)
@@ -211,7 +265,7 @@ PID 84199 exists
 ```
 It shows the list of syscall made by the running program eg. `read()` `clock_nanosleep()`
 
-## Malloc Tracer
+## 📦 Malloc Tracer
 Bind `uprobe/malloc` which detects when userspace allocate memory via `malloc()`
 _Example C Program that allocates memory via malloc_
 [malloc-test.c](./ebpf-go-hello-world/bpf/malloc-test/malloc-test.c)
