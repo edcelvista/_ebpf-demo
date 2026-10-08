@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -418,10 +419,18 @@ func main() {
 	defer objs.Close()
 
 	var pid int
-	fmt.Print("Enter PID: ")
-	if _, err := fmt.Scan(&pid); err != nil {
-		log.Fatalf("invalid PID: %v", err)
+
+	pidFlag := flag.Int("pid", 0, "PID to trace") // -pid 1234
+	flag.Parse()
+	pid = *pidFlag
+
+	if pid == 0 {
+		fmt.Print("Enter PID: ")
+		if _, err := fmt.Scan(&pid); err != nil {
+			log.Fatalf("invalid PID: %v", err)
+		}
 	}
+
 	fmt.Printf("Tracing PID %d\n", pid)
 
 	if pidExists(pid) {
@@ -516,7 +525,7 @@ func main() {
 		}
 	}()
 
-	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tSYS_CALL\tSYS_CALL_ID\n")
+	fmt.Printf("TIME\tTIME_NS_SINCE_BOOT\tPID\tCOMM\tCWD\tCMD\tSYS_CALL\tSYS_CALL_ID\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -550,8 +559,10 @@ func main() {
 			name = fmt.Sprintf("unknown(%d)", event.SyscallID)
 		}
 
+		dt := time.Now()
 		fmt.Printf(
-			"%d\t%d\t%s\t%s\t%s\t%s\t%d\n",
+			"%s\t%d\t%d\t%s\t%s\t%s\t%s\t%d\n",
+			dt.Format("01-02-2006T15:04:05.000000"),
 			event.TimestampNs,
 			event.PID,
 			event.Comm,

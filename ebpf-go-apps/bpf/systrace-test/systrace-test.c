@@ -14,6 +14,8 @@ int main(int argc, char **argv){
     // printf("program = %s\n", argv[0]);
     // printf("arg 1   = %s\n", argv[1]);
 
+    printf("PID: %ld\n", (long)getpid());
+    
     int t = 1;
     while (t == 1){
         int fd = open(argv[1], O_RDONLY);

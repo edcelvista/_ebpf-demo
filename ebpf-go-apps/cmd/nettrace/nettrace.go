@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/ringbuf"
@@ -90,7 +91,7 @@ func main() {
 		_ = reader.Close()
 	}()
 
-	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tCONN\tLATENCY\t\n")
+	fmt.Printf("TIME\tTIME_NS_SINCE_BOOT\tPID\tCOMM\tCWD\tCMD\tCONN\tLATENCY\t\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -149,8 +150,10 @@ func main() {
 		// 	continue
 		// }
 
+		dt := time.Now()
 		fmt.Printf(
-			"%d\t%d\t%s\t%s\t%s\t%s:%d->%s:%d[%s]->[%s]\t%fs\n",
+			"%s\t%d\t%d\t%s\t%s\t%s\t%s:%d->%s:%d[%s]->[%s]\t%fs\n",
+			dt.Format("01-02-2006T15:04:05.000000"),
 			event.TimestampNs,
 			event.PID,
 			event.Comm,

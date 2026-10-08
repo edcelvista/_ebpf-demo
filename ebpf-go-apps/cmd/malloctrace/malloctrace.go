@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
@@ -136,7 +137,7 @@ func main() {
 		_ = reader.Close() // no return required, reader.close() naturally stop the main thread
 	}()
 
-	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tSID\tTGID\tUID\tSIZE\n")
+	fmt.Printf("TIME\tTIME_NS_SINCE_BOOT\tPID\tCOMM\tCWD\tCMD\tSID\tTGID\tUID\tSIZE\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -181,8 +182,10 @@ func main() {
 		event.Cwd = cwd
 		event.Cmd = cmd
 
+		dt := time.Now()
 		fmt.Printf(
-			"%d\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
+			"%s\t%d\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
+			dt.Format("01-02-2006T15:04:05.000000"),
 			event.TimestampNs,
 			event.PID,
 			event.Comm,
