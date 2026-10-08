@@ -178,12 +178,11 @@ $ curl https://httpbin.org/delay/5
 
 ### 📝 eBPF Trace Response
 ```
-2026/08/30 14:51:40 eBPF NET TRACER Running...
-40885860438216 PID=67331 COMM=curl CWD=/apps/workspace CMD=curl https://httpbin.org/delay/5 CONN=172.31.36.100:0->34.195.135.204:443[CLOSE]->[SYN_SENT] LATENCY=0.000005s
-40885971493883 PID=67331 COMM=swapper/1 CWD=/apps/workspace CMD=curl https://httpbin.org/delay/5 CONN=172.31.36.100:59690->34.195.135.204:443[SYN_SENT]->[ESTABLISHED] LATENCY=0.111060s
-40891598247263 PID=67331 COMM=curl CWD=/apps/workspace CMD=curl https://httpbin.org/delay/5 CONN=172.31.36.100:59690->34.195.135.204:443[ESTABLISHED]->[FIN_WAIT1] LATENCY=5.737814s
-40891708413452 PID=67331 COMM=swapper/0 CWD= CMD= CONN=172.31.36.100:59690->34.195.135.204:443[FIN_WAIT1]->[CLOSING] LATENCY=5.847980s
-40891709178451 PID=67331 COMM=swapper/0 CWD= CMD= CONN=172.31.36.100:59690->34.195.135.204:443[CLOSING]->[CLOSE] LATENCY=5.848745s
+2026/10/08 15:56:53 eBPF NET TRACER Running...
+TIME    TIME_NS_SINCE_BOOT      PID     COMM    CWD     CMD     CONN    LATENCY
+10-08-2026T16:00:28.201693      17063051669693  42357   curl    /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/nettrace-test        curl https://httpbin.org/delay/5        172.31.36.100:0->3.90.119.127:443[CLOSE]->[SYN_SENT]    0.000002s
+10-08-2026T16:00:35.201731      17070051689027  42357   curl    /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/nettrace-test        curl https://httpbin.org/delay/5        172.31.36.100:39950->3.90.119.127:443[ESTABLISHED]->[FIN_WAIT1] 7.000022s
+10-08-2026T16:00:35.313948      17070161617435  42357   ebpf-demo                       172.31.36.100:39950->3.90.119.127:443[FIN_WAIT1]->[CLOSING]     7.109950s
 ```
 Note: It shows Latency between syscall eg. `[FIN_WAIT1]` it waits around 5s.
 
@@ -246,22 +245,20 @@ Detect all system call entry by tapping from `raw_tracepoint/sys_enter`.
 _Example C Program that invokes couple of kernel syscalls_
 [systrace-test.c](./ebpf-go-hello-world/bpf/systrace-test/systrace-test.c)
 ```
-make build && ./systrace-test /etc/passwd # shows pid 84199
+make build && ./systrace-test testfile # shows pid 26873
 ```
 
 ### eBPF Trace Response
 ```
-Enter PID: 84199
-Tracing PID 84199
-PID 84199 exists
-2026/08/30 15:56:03 eBPF SYS TRACER Running...
-44745163818002 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=openat SYS_CALL_ID=257
-44745163856479 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=write SYS_CALL_ID=1
-44745163872943 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=fstat SYS_CALL_ID=5
-44745163877868 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=write SYS_CALL_ID=1
-44745163895847 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=read SYS_CALL_ID=0
-44745163901454 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=close SYS_CALL_ID=3
-44745163906780 PID=84199 COMM=sy CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/systrace-test CMD=./systrace-test /etc/passwd SYS_CALL=clock_nanosleep SYS_CALL_ID=230
+Tracing PID 26873
+PID 26873 exists
+2026/10/08 16:02:47 eBPF SYS TRACER Running...
+TIME    TIME_NS_SINCE_BOOT      PID     COMM    CWD     CMD     SYS_CALL        SYS_CALL_ID
+10-08-2026T16:02:49.249966      17204099880404  26873   systrace-test   /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/systrace-test        ./systrace-test testfile        openat  257
+10-08-2026T16:02:49.250048      17204099910336  26873   systrace-test   /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/systrace-test        ./systrace-test testfile        fstat   5
+10-08-2026T16:02:49.250085      17204099959747  26873   systrace-test   /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/systrace-test        ./systrace-test testfile        read    0
+10-08-2026T16:02:49.250121      17204099966823  26873   systrace-test   /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/systrace-test        ./systrace-test testfile        close   3
+10-08-2026T16:02:49.250151      17204099976551  26873   systrace-test   /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/systrace-test        ./systrace-test testfile        clock_nanosleep 230
 ```
 It shows the list of syscall made by the running program eg. `read()` `clock_nanosleep()`
 
@@ -279,7 +276,8 @@ Allocated: 10496000 bytes (10.01 MiB)
 ```
 eBPF Program=trace_malloc Section=uprobe/malloc
 Arch: amd64 | libcPath: /lib/x86_64-linux-gnu/libc.so.6
-45251111664393 PID=88199 COMM=malloc-test CWD=/apps/workspace/ebpf-demo/ebpf-go-hello-world/bpf/malloc-test CMD=./malloc-test 10496000 SID=18446744073709551599 TGID=88199 UID=1000 SIZE=malloc: 10496000 bytes: (10.01 MB)
+TIME    TIME_NS_SINCE_BOOT      PID     COMM    CWD     CMD     SID     TGID    UID     SIZE
+10-08-2026T15:59:57.039351      17031889340995  42050   malloc-test     /apps/workspace/ebpf-demo/ebpf-go-apps/bpf/malloc-test  ./malloc-test 10485760  18446744073709551599    42050   1000   malloc: 10485760 bytes: (10.00 MB)
 ```
 
 The trace shows the exact amount of memory allocated and who allocated it including the PID Command.
