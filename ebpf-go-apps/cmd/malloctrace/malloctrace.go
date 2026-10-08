@@ -136,6 +136,7 @@ func main() {
 		_ = reader.Close() // no return required, reader.close() naturally stop the main thread
 	}()
 
+	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tSID\tTGID\tUID\tSIZE\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -181,7 +182,7 @@ func main() {
 		event.Cmd = cmd
 
 		fmt.Printf(
-			"%d PID=%d COMM=%s CWD=%s CMD=%s SID=%d TGID=%d UID=%d SIZE=%s\n",
+			"%d\t%d\t%s\t%s\t%s\t%d\t%d\t%d\t%s\n",
 			event.TimestampNs,
 			event.PID,
 			event.Comm,

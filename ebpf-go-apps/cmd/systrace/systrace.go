@@ -432,7 +432,7 @@ func main() {
 
 	// Pass data to kernel space via maps
 	var key uint32 = 0
-	var upid uint32 = uint32(pid) // TODO CHECK if necesary
+	var upid uint32 = uint32(pid)
 	if err := objs.TargetPid.Put(key, upid); err != nil {
 		log.Fatalf("setting target PID: %v", err)
 	}
@@ -516,6 +516,7 @@ func main() {
 		}
 	}()
 
+	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tSYS_CALL\tSYS_CALL_ID\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -538,7 +539,7 @@ func main() {
 		event.TimestampNs = binary.LittleEndian.Uint64(record.RawSample[0:8])
 		event.PID = binary.LittleEndian.Uint32(record.RawSample[8:12])
 		event.SyscallID = binary.LittleEndian.Uint64(record.RawSample[16:24])
-		event.Comm = string(record.RawSample[24:26])
+		event.Comm = string(record.RawSample[24:40])
 
 		cwd, cmd := getPIDCWD_CMD(event.PID)
 		event.Cwd = cwd
@@ -550,7 +551,7 @@ func main() {
 		}
 
 		fmt.Printf(
-			"%d PID=%d COMM=%s CWD=%s CMD=%s SYS_CALL=%s SYS_CALL_ID=%d\n",
+			"%d\t%d\t%s\t%s\t%s\t%s\t%d\n",
 			event.TimestampNs,
 			event.PID,
 			event.Comm,

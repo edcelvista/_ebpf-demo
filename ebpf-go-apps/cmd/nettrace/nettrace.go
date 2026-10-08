@@ -37,6 +37,8 @@ type Event struct { // This must correspond to your C structure: tcp_event
 	Cmd  string // user-space
 }
 
+const LOG_LEVEL = "info"
+
 func main() {
 	// Load generated BPF objects. by go generate
 	objs := nettraceObjects{}
@@ -44,6 +46,18 @@ func main() {
 		log.Fatalf("loading BPF objects: %v", err)
 	}
 	defer objs.Close()
+
+	// Pass data to kernel space via maps
+	cnfKey := uint32(0)
+	var cnfVal [32]byte // fills the text and leaves the remaining bytes zeroed:
+	copy(cnfVal[:], LOG_LEVEL)
+	if err := objs.Conf.Put(cnfKey, cnfVal); err != nil {
+		log.Fatalf("setting config: %v", err)
+	}
+
+	if LOG_LEVEL == "debug" {
+		log.Println("Debug: Enabled | Read => /sys/kernel/debug/tracing/trace_pipe | to see the printk from kernel...")
+	}
 
 	/* Attach:
 	SEC("tracepoint/sock/inet_sock_set_state")
@@ -76,6 +90,7 @@ func main() {
 		_ = reader.Close()
 	}()
 
+	fmt.Printf("TIME\tPID\tCOMM\tCWD\tCMD\tCONN\tLATENCY\t\n")
 	for {
 		record, err := reader.Read()
 		if err != nil {
@@ -135,7 +150,7 @@ func main() {
 		// }
 
 		fmt.Printf(
-			"%d PID=%d COMM=%s CWD=%s CMD=%s CONN=%s:%d->%s:%d[%s]->[%s] LATENCY=%fs\n",
+			"%d\t%d\t%s\t%s\t%s\t%s:%d->%s:%d[%s]->[%s]\t%fs\n",
 			event.TimestampNs,
 			event.PID,
 			event.Comm,

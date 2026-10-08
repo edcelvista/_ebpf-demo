@@ -63,8 +63,15 @@ struct {
     __uint(max_entries, 1 << 24);
 } events SEC(".maps");
 
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);
+    __type(key, __u32);
+    __type(value, char[32]);
+} conf SEC(".maps");
+
 // tells the compiler to inline the function whenever possible. In eBPF, this is commonly used for helper functions so the function body gets inserted at its call site. Not called but statically injected the code during compile
-static __always_inline void read_conn_info(struct sock *sk, struct conn_info *info) {
+static __always_inline void read_conn_info(struct sock *sk, struct conn_info *info, char *logLevel) {
     info->saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
     info->daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
     info->sport = BPF_CORE_READ(sk, __sk_common.skc_num);
@@ -82,20 +89,28 @@ static __always_inline void read_conn_info(struct sock *sk, struct conn_info *in
     info->start_ns = bpf_ktime_get_ns();
     
     // [DEBUG]
-    // bpf_printk(
-    //     "fill: sk=%p saddr=%x daddr=%x sport=%u dport=%u",
-    //     sk,
-    //     info->saddr,
-    //     info->daddr,
-    //     info->sport,
-    //     info->dport
-    // );
+    if (bpf_strncmp(logLevel, 16, "debug") == 0){
+        bpf_printk(
+            "fill: sk=%p saddr=%x daddr=%x sport=%u dport=%u",
+            sk,
+            info->saddr,
+            info->daddr,
+            info->sport,
+            info->dport
+        );
+    }
 }
 
 SEC("tracepoint/sock/inet_sock_set_state")
 int trace_tcp_state(struct trace_event_raw_inet_sock_set_state *ctx){
     struct sock *sk = (struct sock *)ctx->skaddr; // Received Kernel Event Message and store into sock struct provided by vmlinux library
     if (!sk)
+        return 0;
+    
+    /* Load config from user-space */
+    __u32 confKey = 0;
+    char *logLevel = bpf_map_lookup_elem(&conf, &confKey);
+    if (!logLevel)
         return 0;
 
     /* If IP Address return 0.0.0.0:0
@@ -132,21 +147,24 @@ int trace_tcp_state(struct trace_event_raw_inet_sock_set_state *ctx){
     */
 
     // [DEBUG] sudo cat /sys/kernel/debug/tracing/trace_pipe
-    // __u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
-    // __u32 saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
-    // __u32 daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
-    // __u16 sport = BPF_CORE_READ(sk, __sk_common.skc_num);
-    // __u16 dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
-    // bpf_printk(
-    //     "family=%u state=%u sk=%p saddr=%x daddr=%x sport=%u dport=%u",
-    //     family,
-    //     ctx->newstate,
-    //     sk,
-    //     saddr,
-    //     daddr,
-    //     sport,
-    //     dport
-    // );
+    if (bpf_strncmp(logLevel, 16, "debug") == 0){
+        __u16 family = BPF_CORE_READ(sk, __sk_common.skc_family);
+        __u32 saddr = BPF_CORE_READ(sk, __sk_common.skc_rcv_saddr);
+        __u32 daddr = BPF_CORE_READ(sk, __sk_common.skc_daddr);
+        __u16 sport = BPF_CORE_READ(sk, __sk_common.skc_num);
+        __u16 dport = BPF_CORE_READ(sk, __sk_common.skc_dport);
+        bpf_printk(
+            "family=%u state=%u sk=%p saddr=%x daddr=%x sport=%u dport=%u",
+            family,
+            ctx->newstate,
+            sk,
+            saddr,
+            daddr,
+            sport,
+            dport
+        );
+    }
+
 
     /*
      * We only care about TCP.
@@ -192,12 +210,12 @@ int trace_tcp_state(struct trace_event_raw_inet_sock_set_state *ctx){
 
     cached = bpf_map_lookup_elem(&connections, &key);
     struct conn_info current = {};
-
+    
     /*
      * Read the current socket tuple.
     */
 
-    read_conn_info(sk, &current);
+    read_conn_info(sk, &current, logLevel);
 
     /*
      * If we already have a valid tuple, preserve it.
